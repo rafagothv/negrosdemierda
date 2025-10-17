@@ -106,9 +106,19 @@ function rgbToHex(r, g, b) {
 
 // Keep the old capture() for manual snapshots (optional)
 function capturar() {
-  captureCanvas.width = video.videoWidth;
-  captureCanvas.height = video.videoHeight;
-  captureCtx.drawImage(video, 0, 0);
+  // Ensure the canvas has a sensible size. If video not ready, use fallback size.
+  const vw = video.videoWidth || 640;
+  const vh = video.videoHeight || 480;
+  captureCanvas.width = vw;
+  captureCanvas.height = vh;
+
+  try {
+    captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+  } catch (err) {
+    console.error('drawImage failed:', err);
+    showToast('Error: cámara no disponible');
+    return;
+  }
   // Decide region: prefer last face box, else center crop
   let sx, sy, sw, sh;
   if (lastFaceBox) {
@@ -124,6 +134,12 @@ function capturar() {
   }
 
   try {
+    // Guard against out-of-bounds coordinates
+    sx = Math.max(0, Math.min(sx, captureCanvas.width - 1));
+    sy = Math.max(0, Math.min(sy, captureCanvas.height - 1));
+    sw = Math.max(1, Math.min(sw, captureCanvas.width - sx));
+    sh = Math.max(1, Math.min(sh, captureCanvas.height - sy));
+
     const img = captureCtx.getImageData(sx, sy, sw, sh);
     const avg = averageColor(img.data);
     const hex = rgbToHex(avg.r, avg.g, avg.b);
@@ -137,13 +153,22 @@ function capturar() {
     const tone = luminance >= threshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
 
     // show toast
-    resultTextEl.textContent = tone;
-    resultToast.hidden = false;
-    // auto-hide after 2.2s
-    setTimeout(() => { resultToast.hidden = true; }, 2200);
+    showToast(tone, 2200);
   } catch (e) {
     console.error('Error capturando color:', e);
+    showToast('Error al procesar imagen');
   }
+}
+
+function showToast(text, duration = 2200) {
+  if (!resultToast || !resultTextEl) return;
+  resultTextEl.textContent = text;
+  resultToast.hidden = false;
+  resultToast.style.display = 'inline-flex';
+  setTimeout(() => {
+    resultToast.hidden = true;
+    resultToast.style.display = '';
+  }, duration);
 }
 
 // Start when video is ready
