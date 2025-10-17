@@ -284,6 +284,10 @@ function capturar() {
           tracks.forEach(t => t.stop());
           // clear srcObject so UI reflects camera off
           video.srcObject = null;
+          // mark stream as inactive and stop processing loop if present
+          streamActive = false;
+          if (mpCamera && typeof mpCamera.stop === 'function') mpCamera.stop();
+          if (mpCamera && mpCamera._clearStatus) mpCamera._clearStatus();
         } catch (e) { console.warn('Error stopping tracks:', e); }
       }
 
@@ -359,8 +363,23 @@ function showBigResult(text, hex, avg, frameDataUrl) {
   }
   bigResult.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">${inner}</div>`;
   bigResult.style.display = 'flex';
-  // hide after a few seconds
-  setTimeout(() => { bigResult.style.display = 'none'; }, 3200);
+  // Add an explicit Aceptar button to close the overlay
+  const acceptBtn = document.getElementById('bigResultAcceptBtn');
+  if (acceptBtn) acceptBtn.remove();
+  const btn = document.createElement('button');
+  btn.id = 'bigResultAcceptBtn';
+  btn.className = 'accept-btn';
+  btn.textContent = 'Aceptar';
+  btn.addEventListener('click', () => {
+    bigResult.style.display = 'none';
+    // clear content
+    bigResult.innerHTML = '';
+    // restart camera and detector
+    startStream();
+  });
+  // append to the inner container
+  const innerContainer = bigResult.firstElementChild || bigResult;
+  innerContainer.appendChild(btn);
 }
 
 // Permite reintentar el acceso a la cámara

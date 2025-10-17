@@ -139,6 +139,19 @@ video {
   z-index: 9999;
 }
 
+.big-result .accept-btn {
+  margin-top: 18px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.big-result .accept-btn:hover { background: rgba(255,255,255,0.18); }
+
 .capture-btn {
   background: #4CAF50;
   color: white;
