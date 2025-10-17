@@ -225,7 +225,7 @@ function capturar() {
   luminanceHistory.push(luminance);
   if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
   const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
-  const tone = smoothLuma >= luminanceThreshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
+  const tone = smoothLuma >= luminanceThreshold ? 'ERES BLANCO, TE SALVATE' : 'ERES UN NEGRO DE MIERDA DALE A LABURAR';
 
     // show toast
     showToast(tone, 2200);
@@ -282,41 +282,72 @@ video.addEventListener('loadedmetadata', () => {
 // When using the npm build, faceDetectionModule is available globaly from the script.
 // Start the camera after the scripts are loaded and the page is visible.
 window.addEventListener('DOMContentLoaded', () => {
-  // Try to start camera silently; if autoplay is blocked, show a button to let the user start it.
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-      video.srcObject = stream;
-      const p = video.play();
-      if (p && p.then) {
-        p.catch(e => {
-          console.warn('video.play() blocked, waiting for user gesture');
-          if (startCameraBtn) startCameraBtn.style.display = '';
-        }).finally(() => startCamera());
-      } else {
-        startCamera();
-      }
-    })
-    .catch(err => {
-      // show start button so user can retry with a gesture
-      if (startCameraBtn) startCameraBtn.style.display = '';
-      console.error('getUserMedia error:', err);
-    });
-
-  if (startCameraBtn) {
-    startCameraBtn.addEventListener('click', () => {
-      // request permission and start
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          video.srcObject = stream;
-          video.play().catch(e => console.warn('play() after user gesture failed:', e));
-          startCamera();
-          startCameraBtn.style.display = 'none';
-        })
-        .catch(err => {
-          console.error('Start camera button error:', err);
-          showToast('No se pudo activar la cámara');
-        });
+  // Try to dynamically load the face detection script (if not already loaded).
+  function loadScript(url, timeout = 3000) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = url;
+      s.async = true;
+      let timer = setTimeout(() => {
+        s.onerror = null;
+        s.onload = null;
+        reject(new Error('timeout'));
+      }, timeout);
+      s.onload = () => { clearTimeout(timer); resolve(); };
+      s.onerror = (e) => { clearTimeout(timer); reject(e); };
+      document.head.appendChild(s);
     });
   }
+
+  async function ensureFaceModule() {
+    if (typeof faceDetectionModule !== 'undefined') return true;
+    try {
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js', 3000);
+      return typeof faceDetectionModule !== 'undefined';
+    } catch (e) {
+      console.warn('Failed to load face_detection script dynamically:', e);
+      return false;
+    }
+  }
+
+  // Try to ensure the face module, but don't block camera start for too long.
+  ensureFaceModule().then((hasFace) => {
+    // Try to start camera silently; if autoplay is blocked, show a button to let the user start it.
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        const p = video.play();
+        if (p && p.then) {
+          p.catch(e => {
+            console.warn('video.play() blocked, waiting for user gesture');
+            if (startCameraBtn) startCameraBtn.style.display = '';
+          }).finally(() => startCamera(hasFace));
+        } else {
+          startCamera(hasFace);
+        }
+      })
+      .catch(err => {
+        // show start button so user can retry with a gesture
+        if (startCameraBtn) startCameraBtn.style.display = '';
+        console.error('getUserMedia error:', err);
+      });
+
+    if (startCameraBtn) {
+      startCameraBtn.addEventListener('click', () => {
+        // request permission and start
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            video.srcObject = stream;
+            video.play().catch(e => console.warn('play() after user gesture failed:', e));
+            startCamera(hasFace);
+            startCameraBtn.style.display = 'none';
+          })
+          .catch(err => {
+            console.error('Start camera button error:', err);
+            showToast('No se pudo activar la cámara');
+          });
+      });
+    }
+  });
 });
 
