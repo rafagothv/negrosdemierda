@@ -254,13 +254,16 @@ function capturar() {
     swatch.style.background = hex;
     colorHex.textContent = hex.toUpperCase();
 
-    // Compute luminance (relative luminance formula)
-    const luminance = (0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b) / 255;
-    // smoothing
-    luminanceHistory.push(luminance);
-    if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
+  // Compute luminance (kept for history) and update smoothing history
+  const luminance = (0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b) / 255;
+  luminanceHistory.push(luminance);
+  if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
   const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
-  const tone = smoothLuma >= 0.5 ? 'Predomina tono claro' : 'Predomina tono oscuro';
+
+  // Tone decision: use explicit RGB thresholds as requested
+  // Consider 'oscuro' when average channels satisfy: r < 90 && g < 70 && b < 60
+  const isDarkByRGB = (avg.r < 90 && avg.g < 70 && avg.b < 60);
+  const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
 
     // Show verifying progress only after capture, animate for a longer period (8s) then show a large result
     if (verifyingEl && progressBar && verifyingText) {
