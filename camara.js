@@ -5,8 +5,7 @@ const overlay = document.getElementById('overlay');
 const overlayCtx = overlay.getContext('2d');
 const swatch = document.getElementById('swatch');
 const colorHex = document.getElementById('colorHex');
-const resultToast = document.getElementById('resultToast');
-const resultTextEl = document.getElementById('resultText');
+// resultToast removed per user request; showToast becomes a no-op
 const retryCameraBtn = document.getElementById('retryCameraBtn');
 const startCameraBtn = document.getElementById('startCameraBtn');
 const retryDetectorBtn = document.getElementById('retryDetectorBtn');
@@ -373,15 +372,8 @@ function reintentarCamara() {
     });
 }
 
-function showToast(text, duration = 2200) {
-  if (!resultToast || !resultTextEl) return;
-  resultTextEl.textContent = text;
-  resultToast.hidden = false;
-  resultToast.style.display = 'inline-flex';
-  setTimeout(() => {
-    resultToast.hidden = true;
-    resultToast.style.display = '';
-  }, duration);
+function showToast() {
+  // intentionally no-op; toasts/messages removed
 }
 
 // Start when video is ready

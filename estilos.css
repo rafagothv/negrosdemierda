@@ -84,25 +84,7 @@ video {
   border-radius: 8px;
 }
 
-.result-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
-  background: rgba(26,35,126,0.95);
-  color: white;
-  padding: 12px 18px;
-  border-radius: 999px;
-  box-shadow: 0 6px 22px rgba(0,0,0,0.25);
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.result-text {
-  font-size: 14px;
-}
+/* result toast removed */
 
 .controls {
   margin-top: 14px;
