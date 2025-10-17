@@ -359,10 +359,10 @@ window.addEventListener('DOMContentLoaded', () => {
           p.catch(e => {
             console.warn('video.play() blocked, waiting for user gesture');
             if (startCameraBtn) startCameraBtn.style.display = '';
-          }).finally(() => startCamera(hasFace));
-        } else {
-          startCamera(hasFace);
+          });
         }
+        // Initialize detector only after the video actually starts playing or has data
+        initAfterStream(hasFace);
       })
       .catch(err => {
         // show start button so user can retry with a gesture
@@ -377,7 +377,7 @@ window.addEventListener('DOMContentLoaded', () => {
           .then(stream => {
             video.srcObject = stream;
             video.play().catch(e => console.warn('play() after user gesture failed:', e));
-            startCamera(hasFace);
+            initAfterStream(hasFace);
             startCameraBtn.style.display = 'none';
           })
           .catch(err => {
@@ -393,8 +393,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const ok = await ensureFaceModule();
         if (ok) {
           showToast('Detector cargado');
-          // attempt to instantiate detector now
-          startCamera(true);
+          // attempt to instantiate detector now, but only after stream is ready
+          initAfterStream(true);
           retryDetectorBtn.style.display = 'none';
         } else {
           showToast('No se pudo cargar el detector');
@@ -405,4 +405,22 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// Helper: call startCamera(hasFace) only after the video element has started producing frames
+function initAfterStream(hasFace) {
+  let started = false;
+  function tryStart() {
+    if (started) return;
+    if (video && video.readyState >= 2) {
+      started = true;
+      startCamera(hasFace);
+      video.removeEventListener('playing', tryStart);
+      video.removeEventListener('loadeddata', tryStart);
+    }
+  }
+  video.addEventListener('playing', tryStart);
+  video.addEventListener('loadeddata', tryStart);
+  // fallback: try after a short delay in case events don't fire
+  setTimeout(tryStart, 600);
+}
 
