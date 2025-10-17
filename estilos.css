@@ -104,6 +104,19 @@ video {
   font-size: 14px;
 }
 
+.controls {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.controls input[type="range"] {
+  width: 80%;
+  max-width: 300px;
+}
+
 .capture-btn {
   background: #4CAF50;
   color: white;

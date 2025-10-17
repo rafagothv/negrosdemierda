@@ -13,6 +13,20 @@ const startCameraBtn = document.getElementById('startCameraBtn');
 let mpCamera = null;
 let lastFaceBox = null; // {x,y,w,h} in pixels
 let faceDetectionAvailable = false;
+let luminanceHistory = [];
+const LUMA_SMOOTH = 5;
+let luminanceThreshold = 0.15; // default tuned to be more permissive for 'claro' (only very dark -> 'oscuro')
+
+const thresholdRange = document.getElementById('thresholdRange');
+const thresholdVal = document.getElementById('thresholdVal');
+if (thresholdRange && thresholdVal) {
+  thresholdRange.value = String(luminanceThreshold);
+  thresholdVal.textContent = String(luminanceThreshold);
+  thresholdRange.addEventListener('input', (e) => {
+    luminanceThreshold = parseFloat(e.target.value);
+    thresholdVal.textContent = luminanceThreshold.toFixed(2);
+  });
+}
 
 function startCamera(hasFace = true) {
   faceDetectionAvailable = !!hasFace && typeof faceDetectionModule !== 'undefined';
@@ -206,10 +220,12 @@ function capturar() {
     colorHex.textContent = hex.toUpperCase();
 
     // Compute luminance (relative luminance formula)
-    const luminance = (0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b) / 255;
-    // threshold: 0.5 default (tunable). Above -> claro, below -> oscuro
-    const threshold = 0.5;
-    const tone = luminance >= threshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
+  const luminance = (0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b) / 255;
+  // smoothing
+  luminanceHistory.push(luminance);
+  if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
+  const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
+  const tone = smoothLuma >= luminanceThreshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
 
     // show toast
     showToast(tone, 2200);
