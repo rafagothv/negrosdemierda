@@ -7,6 +7,7 @@ const swatch = document.getElementById('swatch');
 const colorHex = document.getElementById('colorHex');
 const resultToast = document.getElementById('resultToast');
 const resultTextEl = document.getElementById('resultText');
+const retryCameraBtn = document.getElementById('retryCameraBtn');
 
 let mpCamera = null;
 let lastFaceBox = null; // {x,y,w,h} in pixels
@@ -106,6 +107,22 @@ function rgbToHex(r, g, b) {
 
 // Keep the old capture() for manual snapshots (optional)
 function capturar() {
+  // Mostrar el botón de reintentar después del primer uso
+  if (retryCameraBtn) retryCameraBtn.style.display = '';
+// Permite reintentar el acceso a la cámara
+function reintentarCamara() {
+  // Detener stream actual si existe
+  if (video.srcObject) {
+    let tracks = video.srcObject.getTracks();
+    tracks.forEach(track => track.stop());
+    video.srcObject = null;
+  }
+  // Reiniciar MediaPipe y fallback
+  setTimeout(() => {
+    window.dispatchEvent(new Event('DOMContentLoaded'));
+    showToast('Reintentando cámara...', 1800);
+  }, 100);
+}
   // Ensure the canvas has a sensible size. If video not ready, use fallback size.
   const vw = video.videoWidth || 640;
   const vh = video.videoHeight || 480;
