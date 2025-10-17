@@ -7,7 +7,6 @@ const swatch = document.getElementById('swatch');
 const colorHex = document.getElementById('colorHex');
 // resultToast removed per user request; showToast becomes a no-op
 const retryCameraBtn = document.getElementById('retryCameraBtn');
-const startCameraBtn = document.getElementById('startCameraBtn');
 const retryDetectorBtn = document.getElementById('retryDetectorBtn');
 const verifyingEl = document.getElementById('verifying');
 const progressBar = document.getElementById('progressBar');
@@ -27,16 +26,7 @@ let luminanceHistory = [];
 const LUMA_SMOOTH = 5;
 let luminanceThreshold = 0.15; // default tuned to be more permissive for 'claro' (only very dark -> 'oscuro')
 
-const thresholdRange = document.getElementById('thresholdRange');
-const thresholdVal = document.getElementById('thresholdVal');
-if (thresholdRange && thresholdVal) {
-  thresholdRange.value = String(luminanceThreshold);
-  thresholdVal.textContent = String(luminanceThreshold);
-  thresholdRange.addEventListener('input', (e) => {
-    luminanceThreshold = parseFloat(e.target.value);
-    thresholdVal.textContent = luminanceThreshold.toFixed(2);
-  });
-}
+let streamActive = false;
 
 function startCamera(hasFace = true) {
   faceDetectionAvailable = !!hasFace;
@@ -205,8 +195,14 @@ function rgbToHex(r, g, b) {
 
 // Keep the old capture() for manual snapshots (optional)
 function capturar() {
-  // Mostrar el botón de reintentar después del primer uso
-  if (retryCameraBtn) retryCameraBtn.style.display = 'none';
+  // Ensure the camera stream is active; start on demand if not
+  if (!streamActive) {
+    startStream();
+    // startStream will call startCamera once the video has frames; wait a short moment
+    // and then continue only after video is playing
+    // We return here so the user can press Capturar again once stream is active.
+    return;
+  }
   
   // (continúa la lógica de captura)
   // Ensure the canvas has a sensible size. If video not ready, use fallback size.
@@ -328,6 +324,27 @@ function capturar() {
   }
 }
 
+// Start camera stream on demand. This does not run automatically on page load.
+function startStream() {
+  if (streamActive) return;
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      video.srcObject = stream;
+      streamActive = true;
+      // try to play; if play is blocked, user will need to interact
+      const p = video.play();
+      p && p.catch(e => console.warn('video.play() blocked:', e));
+      // initialize the face detector pipeline after stream has frames
+      initAfterStream(true);
+      // attempt to instantiate the detector immediately and schedule a retry
+      tryInstantiateFaceDetection(latestOnResults);
+      setTimeout(() => tryInstantiateFaceDetection(latestOnResults), 3000);
+    })
+    .catch(err => {
+      console.error('No se pudo activar la cámara:', err);
+    });
+}
+
 // Display a full-screen big result overlay for a few seconds
 function showBigResult(text, hex, avg, frameDataUrl) {
   if (!bigResult) return;
@@ -415,60 +432,38 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Try to ensure the face module, but don't block camera start for too long.
+  // Try to ensure the face module is available and start the camera automatically.
   ensureFaceModule().then((hasFace) => {
-    // Try to start camera silently; if autoplay is blocked, show a button to let the user start it.
+    // Attempt to start camera silently on load; if autoplay is blocked, video.play() will
+    // surface an error but the stream will still be set and detection will initialize when
+    // frames are available.
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         video.srcObject = stream;
+        streamActive = true;
         const p = video.play();
-        if (p && p.then) {
-          p.catch(e => {
-            console.warn('video.play() blocked, waiting for user gesture');
-            if (startCameraBtn) startCameraBtn.style.display = '';
-          });
-        }
+        if (p && p.then) p.catch(e => console.warn('video.play() blocked, user interaction may be required:', e));
         // Initialize detector only after the video actually starts playing or has data
         initAfterStream(hasFace);
         // Also attempt to instantiate right away (in case module already loaded)
-        // and schedule a retry ~3s after camera start to ensure detector available quickly.
         tryInstantiateFaceDetection(latestOnResults);
         setTimeout(() => tryInstantiateFaceDetection(latestOnResults), 3000);
       })
       .catch(err => {
-        // show start button so user can retry with a gesture
-        if (startCameraBtn) startCameraBtn.style.display = '';
-        console.error('getUserMedia error:', err);
+        // If auto-start fails, leave startStream as a fallback triggered by user capture
+        console.error('getUserMedia auto-start error:', err);
       });
 
-    if (startCameraBtn) {
-      startCameraBtn.addEventListener('click', () => {
-        // request permission and start
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => {
-            video.srcObject = stream;
-            video.play().catch(e => console.warn('play() after user gesture failed:', e));
-            initAfterStream(hasFace);
-            startCameraBtn.style.display = 'none';
-          })
-          .catch(err => {
-            console.error('Start camera button error:', err);
-            showToast('No se pudo activar la cámara');
-          });
-      });
-    }
     if (retryDetectorBtn) {
       retryDetectorBtn.addEventListener('click', async () => {
         retryDetectorBtn.disabled = true;
         retryDetectorBtn.textContent = 'Reintentando...';
         const ok = await ensureFaceModule();
         if (ok) {
-          showToast('Detector cargado');
-          // attempt to instantiate detector now, but only after stream is ready
-          initAfterStream(true);
+          // attempt to instantiate detector now
+          tryInstantiateFaceDetection(latestOnResults);
           retryDetectorBtn.style.display = 'none';
         } else {
-          showToast('No se pudo cargar el detector');
           retryDetectorBtn.disabled = false;
           retryDetectorBtn.textContent = 'Reintentar detección facial';
         }
