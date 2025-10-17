@@ -13,7 +13,7 @@ let mpCamera = null;
 let lastFaceBox = null; // {x,y,w,h} in pixels
 
 function startCamera() {
-  // MediaPipe CameraUtils will handle the stream and call our onFrame
+  // Prepare face detection results handler
   const onResults = async (results) => {
     // Resize overlay to match video
     overlay.width = video.videoWidth;
@@ -55,9 +55,14 @@ function startCamera() {
       try {
         const img = captureCtx.getImageData(sx, sy, sw, sh);
         const avg = averageColor(img.data);
-        const hex = rgbToHex(avg.r, avg.g, avg.b);
-        swatch.style.background = hex;
-        colorHex.textContent = hex.toUpperCase();
+        // If region is mostly black (overlay or error), ignore
+        if (avg.blackRatio && avg.blackRatio > 0.6) {
+          // skip updating
+        } else {
+          const hex = rgbToHex(avg.r, avg.g, avg.b);
+          swatch.style.background = hex;
+          colorHex.textContent = hex.toUpperCase();
+        }
       } catch (e) {
         console.warn('No se pudo leer la región de la cara:', e);
       }
@@ -78,27 +83,57 @@ function startCamera() {
 
   faceDetection.onResults(onResults);
 
-  // Hook camera
-  mpCamera = new Camera(video, {
-    onFrame: async () => {
-      await faceDetection.send({image: video});
-    },
-    width: 640,
-    height: 480
-  });
+  // Start a rendering loop that sends the video frame to MediaPipe when ready.
+  let running = true;
+  async function processLoop() {
+    try {
+      if (video && video.readyState >= 2) {
+        // quick check: draw a tiny region and see if it's not all black
+        try {
+          captureCtx.drawImage(video, 0, 0, 4, 4);
+          const small = captureCtx.getImageData(0, 0, 4, 4).data;
+          let allBlack = true;
+          for (let i = 0; i < small.length; i += 4) {
+            if (small[i] !== 0 || small[i+1] !== 0 || small[i+2] !== 0) { allBlack = false; break; }
+          }
+          if (!allBlack) await faceDetection.send({ image: video });
+        } catch (inner) {
+          console.warn('small-sample check failed:', inner);
+        }
+      }
+    } catch (err) {
+      console.error('Error sending frame to faceDetection:', err);
+    }
+    if (running) requestAnimationFrame(processLoop);
+  }
 
-  mpCamera.start();
+  // expose a stop function (in case we want to stop later)
+  mpCamera = { stop: () => { running = false; } };
+  requestAnimationFrame(processLoop);
+  
+  // update camera status every 800ms
+  const statusEl = document.getElementById('cameraStatus');
+  let statusInterval = setInterval(() => {
+    if (!statusEl) return;
+    if (video && video.srcObject) statusEl.textContent = 'Cámara: activa';
+    else statusEl.textContent = 'Cámara: inactiva';
+  }, 800);
+  // clear on stop
+  mpCamera._clearStatus = () => clearInterval(statusInterval);
 }
 
 function averageColor(data) {
   let r = 0, g = 0, b = 0, count = 0;
+  let blackPixels = 0;
   for (let i = 0; i < data.length; i += 4) {
-    r += data[i];
-    g += data[i + 1];
-    b += data[i + 2];
+    const ri = data[i], gi = data[i + 1], bi = data[i + 2];
+    r += ri;
+    g += gi;
+    b += bi;
     count++;
+    if (ri === 0 && gi === 0 && bi === 0) blackPixels++;
   }
-  return { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) };
+  return { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count), blackRatio: blackPixels / count };
 }
 
 function rgbToHex(r, g, b) {
@@ -109,20 +144,8 @@ function rgbToHex(r, g, b) {
 function capturar() {
   // Mostrar el botón de reintentar después del primer uso
   if (retryCameraBtn) retryCameraBtn.style.display = '';
-// Permite reintentar el acceso a la cámara
-function reintentarCamara() {
-  // Detener stream actual si existe
-  if (video.srcObject) {
-    let tracks = video.srcObject.getTracks();
-    tracks.forEach(track => track.stop());
-    video.srcObject = null;
-  }
-  // Reiniciar MediaPipe y fallback
-  setTimeout(() => {
-    window.dispatchEvent(new Event('DOMContentLoaded'));
-    showToast('Reintentando cámara...', 1800);
-  }, 100);
-}
+  
+  // (continúa la lógica de captura)
   // Ensure the canvas has a sensible size. If video not ready, use fallback size.
   const vw = video.videoWidth || 640;
   const vh = video.videoHeight || 480;
@@ -159,6 +182,11 @@ function reintentarCamara() {
 
     const img = captureCtx.getImageData(sx, sy, sw, sh);
     const avg = averageColor(img.data);
+    if (avg.blackRatio && avg.blackRatio > 0.6) {
+      // likely invalid sample (black overlay); notify user
+      showToast('Muestra inválida, intenta otra vez');
+      return;
+    }
     const hex = rgbToHex(avg.r, avg.g, avg.b);
     swatch.style.background = hex;
     colorHex.textContent = hex.toUpperCase();
@@ -175,6 +203,31 @@ function reintentarCamara() {
     console.error('Error capturando color:', e);
     showToast('Error al procesar imagen');
   }
+}
+
+// Permite reintentar el acceso a la cámara
+function reintentarCamara() {
+  // Detener stream actual si existe
+  if (video.srcObject) {
+    let tracks = video.srcObject.getTracks();
+    tracks.forEach(track => track.stop());
+    video.srcObject = null;
+  }
+  // Reiniciar: pedir permisos otra vez y arrancar
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      video.srcObject = stream;
+      // try to play; if it fails, still start camera loop
+      video.play().catch(e => console.warn('video.play() failed on retry:', e))
+        .finally(() => {
+          startCamera();
+          showToast('Reintentando cámara...', 1200);
+        });
+    })
+    .catch(err => {
+      console.error('Reintentar getUserMedia error:', err);
+      showToast('No se pudo acceder a la cámara');
+    });
 }
 
 function showToast(text, duration = 2200) {
@@ -202,7 +255,13 @@ window.addEventListener('DOMContentLoaded', () => {
   navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
       video.srcObject = stream;
-      startCamera();
+      // Attempt to play; if blocked, still call startCamera
+      const p = video.play();
+      if (p && p.then) {
+        p.catch(e => console.warn('video.play() failed on init:', e)).finally(() => startCamera());
+      } else {
+        startCamera();
+      }
     })
     .catch(err => {
       showToast('No se pudo acceder a la cámara');

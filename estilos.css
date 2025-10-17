@@ -76,6 +76,14 @@ video {
   font-weight: 500;
 }
 
+.camera-status {
+  color: #37474f;
+  font-size: 13px;
+  background: rgba(0,0,0,0.04);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
 .result-toast {
   position: fixed;
   left: 50%;
