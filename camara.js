@@ -16,6 +16,11 @@ const verifyingText = document.getElementById('verifyingText');
 const bigResult = document.getElementById('bigResult');
 const captureBtn = document.getElementById('captureBtn');
 
+// Globals for face detection instance and last-onResults callback so we can instantiate
+// the detector at any time (before/after camera start) and wire the callback.
+let faceDetection = null;
+let latestOnResults = null;
+
 let mpCamera = null;
 let lastFaceBox = null; // {x,y,w,h} in pixels
 let faceDetectionAvailable = false;
@@ -95,32 +100,10 @@ function startCamera(hasFace = true) {
     }
   };
 
-  let faceDetection = null;
-  if (faceDetectionAvailable) {
-    // Try several possible globals that the MediaPipe bundle might expose
-    let FaceDetectionClass = null;
-    try {
-      if (typeof faceDetectionModule !== 'undefined' && faceDetectionModule && faceDetectionModule.FaceDetection) FaceDetectionClass = faceDetectionModule.FaceDetection;
-    } catch (e) {}
-    try { if (!FaceDetectionClass && typeof FaceDetection !== 'undefined') FaceDetectionClass = FaceDetection; } catch (e) {}
-    try { if (!FaceDetectionClass && window && window.FaceDetection) FaceDetectionClass = window.FaceDetection; } catch (e) {}
-    try { if (!FaceDetectionClass && window && window.faceDetectionModule && window.faceDetectionModule.FaceDetection) FaceDetectionClass = window.faceDetectionModule.FaceDetection; } catch (e) {}
-
-    if (FaceDetectionClass) {
-      try {
-        faceDetection = new FaceDetectionClass({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}` });
-        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.6 });
-        faceDetection.onResults(onResults);
-        faceDetectionAvailable = true;
-      } catch (e) {
-        console.warn('Failed to instantiate FaceDetection class:', e);
-        faceDetectionAvailable = false;
-      }
-    } else {
-      console.warn('FaceDetection class not found on window after load');
-      faceDetectionAvailable = false;
-    }
-  }
+  // Attempt to instantiate the detector (if available). We use a helper so it can be
+  // called before or after the camera starts.
+  latestOnResults = onResults;
+  tryInstantiateFaceDetection(latestOnResults);
 
   if (!faceDetectionAvailable) {
     console.warn('FaceDetection module not available; running without face detector');
@@ -164,6 +147,43 @@ function startCamera(hasFace = true) {
   }, 800);
   // clear on stop
   mpCamera._clearStatus = () => clearInterval(statusInterval);
+}
+
+// Try to locate and instantiate the MediaPipe FaceDetection class if possible.
+// Accepts an optional onResults callback (the detection pipeline callback from startCamera).
+function tryInstantiateFaceDetection(onResults) {
+  // If already instantiated, wire the callback if provided and return true
+  if (faceDetection) {
+    try { if (onResults) faceDetection.onResults(onResults); } catch (e) {}
+    return true;
+  }
+
+  // Find possible FaceDetection export locations
+  let FaceDetectionClass = null;
+  try {
+    if (typeof faceDetectionModule !== 'undefined' && faceDetectionModule && faceDetectionModule.FaceDetection) FaceDetectionClass = faceDetectionModule.FaceDetection;
+  } catch (e) {}
+  try { if (!FaceDetectionClass && typeof FaceDetection !== 'undefined') FaceDetectionClass = FaceDetection; } catch (e) {}
+  try { if (!FaceDetectionClass && window && window.FaceDetection) FaceDetectionClass = window.FaceDetection; } catch (e) {}
+  try { if (!FaceDetectionClass && window && window.faceDetectionModule && window.faceDetectionModule.FaceDetection) FaceDetectionClass = window.faceDetectionModule.FaceDetection; } catch (e) {}
+
+  if (!FaceDetectionClass) {
+    // Not available yet
+    return false;
+  }
+
+  try {
+    faceDetection = new FaceDetectionClass({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}` });
+    faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.6 });
+    if (onResults) faceDetection.onResults(onResults);
+    faceDetectionAvailable = true;
+    return true;
+  } catch (e) {
+    console.warn('Failed to instantiate FaceDetection class:', e);
+    faceDetectionAvailable = false;
+    faceDetection = null;
+    return false;
+  }
 }
 
 function averageColor(data) {
@@ -401,6 +421,10 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         // Initialize detector only after the video actually starts playing or has data
         initAfterStream(hasFace);
+        // Also attempt to instantiate right away (in case module already loaded)
+        // and schedule a retry ~3s after camera start to ensure detector available quickly.
+        tryInstantiateFaceDetection(latestOnResults);
+        setTimeout(() => tryInstantiateFaceDetection(latestOnResults), 3000);
       })
       .catch(err => {
         // show start button so user can retry with a gesture
