@@ -13,6 +13,8 @@ const retryDetectorBtn = document.getElementById('retryDetectorBtn');
 const verifyingEl = document.getElementById('verifying');
 const progressBar = document.getElementById('progressBar');
 const verifyingText = document.getElementById('verifyingText');
+const bigResult = document.getElementById('bigResult');
+const captureBtn = document.getElementById('captureBtn');
 
 let mpCamera = null;
 let lastFaceBox = null; // {x,y,w,h} in pixels
@@ -246,22 +248,33 @@ function capturar() {
     const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
     const tone = smoothLuma >= luminanceThreshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
 
-    // Show verifying progress then display result in verifying area
+    // Show verifying progress only after capture, animate for a longer period (8s) then show a large result
     if (verifyingEl && progressBar && verifyingText) {
-      // reset
+      const VERIFY_MS = 8000; // 6-10s requested by user; default to 8s
+      // ensure verifying visible and reset bar
       verifyingEl.hidden = false;
-      progressBar.style.width = '4%';
+      progressBar.style.transition = 'none';
+      progressBar.style.width = '0%';
+      // force layout
+      void progressBar.offsetWidth;
+      // animate
+      progressBar.style.transition = `width ${VERIFY_MS}ms linear`;
+      progressBar.style.width = '100%';
       verifyingText.textContent = 'Verificando...';
-      // animate to 100%
-      setTimeout(() => { progressBar.style.width = '100%'; }, 80);
-      // when done, show the tone
+      // hide retry and disable capture while verifying
+      if (retryCameraBtn) retryCameraBtn.style.display = 'none';
+      if (typeof captureBtn !== 'undefined' && captureBtn) captureBtn.disabled = true;
       setTimeout(() => {
-        verifyingText.textContent = tone;
-        // also show a short toast for accessibility
-        showToast(tone, 1400);
-        // hide verifying after short delay
-        setTimeout(() => { verifyingEl.hidden = true; progressBar.style.width = '0%'; if (retryCameraBtn) retryCameraBtn.style.display = ''; }, 1200);
-      }, 1600);
+        // end of verifying
+        verifyingEl.hidden = true;
+        progressBar.style.width = '0%';
+        if (retryCameraBtn) retryCameraBtn.style.display = '';
+        if (typeof captureBtn !== 'undefined' && captureBtn) captureBtn.disabled = false;
+        // show a big, prominent result overlay
+        showBigResult(tone, hex, avg);
+        // accessibility toast as well
+        showToast(tone, 1800);
+      }, VERIFY_MS);
     } else {
       // fallback: show as toast
       if (retryCameraBtn) retryCameraBtn.style.display = '';
@@ -271,6 +284,31 @@ function capturar() {
     console.error('Error capturando color:', e);
     showToast('Error al procesar imagen');
   }
+}
+
+// Display a full-screen big result overlay for a few seconds
+function showBigResult(text, hex, avg) {
+  if (!bigResult) return;
+  bigResult.textContent = text + '\n' + (hex ? hex.toUpperCase() : '');
+  // color the overlay background slightly based on sampled color if provided
+  if (hex) {
+    try {
+      bigResult.style.background = 'rgba(0,0,0,0.45)';
+      // create a large swatch element inside
+      bigResult.style.display = 'flex';
+      bigResult.style.flexDirection = 'column';
+      bigResult.style.alignItems = 'center';
+      bigResult.style.justifyContent = 'center';
+      bigResult.innerHTML = `<div style="background:${hex};width:160px;height:160px;border-radius:12px;border:6px solid rgba(255,255,255,0.18);"></div><div style="margin-top:18px;font-size:44px;font-weight:800;text-align:center;">${text}</div>`;
+    } catch (e) {
+      bigResult.textContent = text;
+    }
+  } else {
+    bigResult.textContent = text;
+    bigResult.style.display = 'flex';
+  }
+  // hide after a few seconds
+  setTimeout(() => { bigResult.style.display = 'none'; }, 3200);
 }
 
 // Permite reintentar el acceso a la cámara

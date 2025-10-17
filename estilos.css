@@ -138,6 +138,21 @@ video {
 .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#4caf50,#8bc34a); transition: width 0.2s linear; }
 .verifying-text { color: #1a237e; font-weight:600; }
 
+.big-result {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  font-size: 40px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  z-index: 9999;
+}
+
 .capture-btn {
   background: #4CAF50;
   color: white;
