@@ -1,9 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Mi Página Web</title>
+  <meta charset="UTF-8">
+  <title>Detector de Color Facial</title>
+  <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-  <h1>¡Hola putaaaaa/<h1>
+  <h1>Detector de Color Promedio</h1>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <button onclick="capturar()">Capturar</button>
+  <script src="camara.js"></script>
 </body>
 </html>
