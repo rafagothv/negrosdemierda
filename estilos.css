@@ -117,6 +117,27 @@ video {
   max-width: 300px;
 }
 
+.verifying {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+}
+
+.verifying-content {
+  width: 90%;
+  max-width: 360px;
+  background: rgba(0,0,0,0.04);
+  padding: 10px;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.progress { width: 70%; height: 10px; background: rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; }
+.progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#4caf50,#8bc34a); transition: width 0.2s linear; }
+.verifying-text { color: #1a237e; font-weight:600; }
+
 .capture-btn {
   background: #4CAF50;
   color: white;

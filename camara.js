@@ -9,6 +9,9 @@ const resultToast = document.getElementById('resultToast');
 const resultTextEl = document.getElementById('resultText');
 const retryCameraBtn = document.getElementById('retryCameraBtn');
 const startCameraBtn = document.getElementById('startCameraBtn');
+const verifyingEl = document.getElementById('verifying');
+const progressBar = document.getElementById('progressBar');
+const verifyingText = document.getElementById('verifyingText');
 
 let mpCamera = null;
 let lastFaceBox = null; // {x,y,w,h} in pixels
@@ -220,15 +223,33 @@ function capturar() {
     colorHex.textContent = hex.toUpperCase();
 
     // Compute luminance (relative luminance formula)
-  const luminance = (0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b) / 255;
-  // smoothing
-  luminanceHistory.push(luminance);
-  if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
-  const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
-  const tone = smoothLuma >= luminanceThreshold ? 'ERES BLANCO, TE SALVATE' : 'ERES UN NEGRO DE MIERDA DALE A LABURAR';
+    const luminance = (0.2126 * avg.r + 0.7152 * avg.g + 0.0722 * avg.b) / 255;
+    // smoothing
+    luminanceHistory.push(luminance);
+    if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
+    const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
+    const tone = smoothLuma >= luminanceThreshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
 
-    // show toast
-    showToast(tone, 2200);
+    // Show verifying progress then display result in verifying area
+    if (verifyingEl && progressBar && verifyingText) {
+      // reset
+      verifyingEl.hidden = false;
+      progressBar.style.width = '4%';
+      verifyingText.textContent = 'Verificando...';
+      // animate to 100%
+      setTimeout(() => { progressBar.style.width = '100%'; }, 80);
+      // when done, show the tone
+      setTimeout(() => {
+        verifyingText.textContent = tone;
+        // also show a short toast for accessibility
+        showToast(tone, 1400);
+        // hide verifying after short delay
+        setTimeout(() => { verifyingEl.hidden = true; progressBar.style.width = '0%'; }, 1200);
+      }, 1600);
+    } else {
+      // fallback: show as toast
+      showToast(tone, 2200);
+    }
   } catch (e) {
     console.error('Error capturando color:', e);
     showToast('Error al procesar imagen');
