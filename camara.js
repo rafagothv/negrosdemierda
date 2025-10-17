@@ -24,8 +24,7 @@ let lastFaceBox = null; // {x,y,w,h} in pixels
 let faceDetectionAvailable = false;
 let luminanceHistory = [];
 const LUMA_SMOOTH = 5;
-let luminanceThreshold = 0.15; // default tuned to be more permissive for 'claro' (only very dark -> 'oscuro')
-
+// Tone decision simplified: if smoothLuma < 0.5 => oscuro, otherwise claro
 let streamActive = false;
 
 function startCamera(hasFace = true) {
@@ -260,8 +259,8 @@ function capturar() {
     // smoothing
     luminanceHistory.push(luminance);
     if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
-    const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
-    const tone = smoothLuma >= luminanceThreshold ? 'Predomina tono claro' : 'Predomina tono oscuro';
+  const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
+  const tone = smoothLuma >= 0.5 ? 'Predomina tono claro' : 'Predomina tono oscuro';
 
     // Show verifying progress only after capture, animate for a longer period (8s) then show a large result
     if (verifyingEl && progressBar && verifyingText) {
