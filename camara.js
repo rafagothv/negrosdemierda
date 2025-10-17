@@ -296,7 +296,7 @@ async function capturar() {
   const darkByLuma = smoothLuma < 0.38;    // quite dark by luminance
   // For faces, require either very low luminance, or both low avg and moderately low luminance
   const isDarkByRGB = darkByLuma || (darkByAvg && smoothLuma < 0.45);
-  const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
+  const tone = isDarkByRGB ? 'oh no soy un negro de mierda' : 'soy blanquito viva hitler';
   if (isDarkByRGB) {
     // play song for dark tone
     playDarkSong();
