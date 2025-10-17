@@ -102,7 +102,7 @@ function startCamera(hasFace = true) {
         } else {
           const hex = rgbToHex(avg.r, avg.g, avg.b);
           swatch.style.background = hex;
-          colorHex.textContent = hex.toUpperCase();
+          // color hex kept internal; not displayed in UI
         }
       } catch (e) {
         console.warn('No se pudo leer la región de la cara:', e);
@@ -295,7 +295,7 @@ function capturar() {
   const darkByLuma = smoothLuma < 0.38;    // quite dark by luminance
   // For faces, require either very low luminance, or both low avg and moderately low luminance
   const isDarkByRGB = darkByLuma || (darkByAvg && smoothLuma < 0.45);
-  const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
+  const tone = isDarkByRGB ? 'oh no soy un negro de mierda' : 'soy blanco viva hitler beo anda';
   if (isDarkByRGB) {
     // play song for dark tone
     playDarkSong();
@@ -398,7 +398,7 @@ function showBigResult(text, hex, avg, frameDataUrl) {
     inner += `<img src="${frameDataUrl}" alt="captured frame" style="max-width:420px; width:86%; height:auto; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.4);">`;
   }
   if (hex) {
-    inner += `<div style="margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:10px;"><div style="background:${hex};width:140px;height:140px;border-radius:12px;border:6px solid rgba(255,255,255,0.18);"></div><div style="font-size:44px;font-weight:800;text-align:center;">${text}</div><div style="font-size:18px;opacity:0.92;">${hex.toUpperCase()}</div></div>`;
+    inner += `<div style="margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:10px;"><div style="background:${hex};width:140px;height:140px;border-radius:12px;border:6px solid rgba(255,255,255,0.18);"></div><div style="font-size:44px;font-weight:800;text-align:center;">${text}</div></div>`;
   } else {
     inner += `<div style="margin-top:18px;font-size:44px;font-weight:800;text-align:center;">${text}</div>`;
   }

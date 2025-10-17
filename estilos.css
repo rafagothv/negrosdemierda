@@ -76,6 +76,9 @@ video {
   font-weight: 500;
 }
 
+/* hide the raw hex value from the UI per request; keep swatch visible */
+#colorHex { display: none; }
+
 .camera-status {
   color: #37474f;
   font-size: 13px;
