@@ -9,6 +9,7 @@ const resultToast = document.getElementById('resultToast');
 const resultTextEl = document.getElementById('resultText');
 const retryCameraBtn = document.getElementById('retryCameraBtn');
 const startCameraBtn = document.getElementById('startCameraBtn');
+const retryDetectorBtn = document.getElementById('retryDetectorBtn');
 const verifyingEl = document.getElementById('verifying');
 const progressBar = document.getElementById('progressBar');
 const verifyingText = document.getElementById('verifyingText');
@@ -32,7 +33,7 @@ if (thresholdRange && thresholdVal) {
 }
 
 function startCamera(hasFace = true) {
-  faceDetectionAvailable = !!hasFace && typeof faceDetectionModule !== 'undefined';
+  faceDetectionAvailable = !!hasFace;
   // Prepare face detection results handler (only if available)
   const onResults = async (results) => {
     // Resize overlay to match video
@@ -94,17 +95,32 @@ function startCamera(hasFace = true) {
 
   let faceDetection = null;
   if (faceDetectionAvailable) {
-    faceDetection = new faceDetectionModule.FaceDetection({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
-    });
+    // Try several possible globals that the MediaPipe bundle might expose
+    let FaceDetectionClass = null;
+    try {
+      if (typeof faceDetectionModule !== 'undefined' && faceDetectionModule && faceDetectionModule.FaceDetection) FaceDetectionClass = faceDetectionModule.FaceDetection;
+    } catch (e) {}
+    try { if (!FaceDetectionClass && typeof FaceDetection !== 'undefined') FaceDetectionClass = FaceDetection; } catch (e) {}
+    try { if (!FaceDetectionClass && window && window.FaceDetection) FaceDetectionClass = window.FaceDetection; } catch (e) {}
+    try { if (!FaceDetectionClass && window && window.faceDetectionModule && window.faceDetectionModule.FaceDetection) FaceDetectionClass = window.faceDetectionModule.FaceDetection; } catch (e) {}
 
-    faceDetection.setOptions({
-      model: 'short',
-      minDetectionConfidence: 0.6
-    });
+    if (FaceDetectionClass) {
+      try {
+        faceDetection = new FaceDetectionClass({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}` });
+        faceDetection.setOptions({ model: 'short', minDetectionConfidence: 0.6 });
+        faceDetection.onResults(onResults);
+        faceDetectionAvailable = true;
+      } catch (e) {
+        console.warn('Failed to instantiate FaceDetection class:', e);
+        faceDetectionAvailable = false;
+      }
+    } else {
+      console.warn('FaceDetection class not found on window after load');
+      faceDetectionAvailable = false;
+    }
+  }
 
-    faceDetection.onResults(onResults);
-  } else {
+  if (!faceDetectionAvailable) {
     console.warn('FaceDetection module not available; running without face detector');
     showToast('Detector facial no disponible. Alinea la cara y recarga la página.');
   }
@@ -169,7 +185,7 @@ function rgbToHex(r, g, b) {
 // Keep the old capture() for manual snapshots (optional)
 function capturar() {
   // Mostrar el botón de reintentar después del primer uso
-  if (retryCameraBtn) retryCameraBtn.style.display = '';
+  if (retryCameraBtn) retryCameraBtn.style.display = 'none';
   
   // (continúa la lógica de captura)
   // Ensure the canvas has a sensible size. If video not ready, use fallback size.
@@ -244,10 +260,11 @@ function capturar() {
         // also show a short toast for accessibility
         showToast(tone, 1400);
         // hide verifying after short delay
-        setTimeout(() => { verifyingEl.hidden = true; progressBar.style.width = '0%'; }, 1200);
+        setTimeout(() => { verifyingEl.hidden = true; progressBar.style.width = '0%'; if (retryCameraBtn) retryCameraBtn.style.display = ''; }, 1200);
       }, 1600);
     } else {
       // fallback: show as toast
+      if (retryCameraBtn) retryCameraBtn.style.display = '';
       showToast(tone, 2200);
     }
   } catch (e) {
@@ -367,6 +384,23 @@ window.addEventListener('DOMContentLoaded', () => {
             console.error('Start camera button error:', err);
             showToast('No se pudo activar la cámara');
           });
+      });
+    }
+    if (retryDetectorBtn) {
+      retryDetectorBtn.addEventListener('click', async () => {
+        retryDetectorBtn.disabled = true;
+        retryDetectorBtn.textContent = 'Reintentando...';
+        const ok = await ensureFaceModule();
+        if (ok) {
+          showToast('Detector cargado');
+          // attempt to instantiate detector now
+          startCamera(true);
+          retryDetectorBtn.style.display = 'none';
+        } else {
+          showToast('No se pudo cargar el detector');
+          retryDetectorBtn.disabled = false;
+          retryDetectorBtn.textContent = 'Reintentar detección facial';
+        }
       });
     }
   });
