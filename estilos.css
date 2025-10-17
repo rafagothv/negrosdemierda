@@ -118,24 +118,28 @@ video {
 }
 
 .verifying {
-  margin-top: 14px;
-  display: flex;
+  position: fixed;
+  inset: 0;
+  display: none; /* only shown after capture */
+  align-items: center;
   justify-content: center;
+  background: rgba(0,0,0,0.6);
+  z-index: 10000;
 }
 
 .verifying-content {
-  width: 90%;
-  max-width: 360px;
-  background: rgba(0,0,0,0.04);
-  padding: 10px;
-  border-radius: 12px;
+  width: 92%;
+  max-width: 480px;
+  background: rgba(255,255,255,0.06);
+  padding: 18px;
+  border-radius: 14px;
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
 }
 
-.progress { width: 70%; height: 10px; background: rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; }
-.progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#4caf50,#8bc34a); transition: width 0.2s linear; }
+.progress { width: 70%; height: 12px; background: rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
+.progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#2196f3,#4fc3f7); transition: width 0.2s linear; }
 .verifying-text { color: #1a237e; font-weight:600; }
 
 .big-result {

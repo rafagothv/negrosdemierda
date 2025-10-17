@@ -271,8 +271,30 @@ function capturar() {
     // Show verifying progress only after capture, animate for a longer period (8s) then show a large result
     if (verifyingEl && progressBar && verifyingText) {
       const VERIFY_MS = 8000; // 6-10s requested by user; default to 8s
+      // Freeze last frame into a data URL so the big result can show the exact captured frame
+      let lastFrameDataUrl = null;
+      try {
+        // draw current video into the captureCanvas in full size
+        captureCanvas.width = vw;
+        captureCanvas.height = vh;
+        captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+        lastFrameDataUrl = captureCanvas.toDataURL('image/png');
+      } catch (e) {
+        console.warn('No se pudo capturar el último frame:', e);
+      }
+
+      // Stop camera tracks to 'turn off' the camera while verifying
+      if (video && video.srcObject) {
+        try {
+          const tracks = video.srcObject.getTracks();
+          tracks.forEach(t => t.stop());
+          // clear srcObject so UI reflects camera off
+          video.srcObject = null;
+        } catch (e) { console.warn('Error stopping tracks:', e); }
+      }
+
       // ensure verifying visible and reset bar
-      verifyingEl.hidden = false;
+      verifyingEl.style.display = 'flex';
       progressBar.style.transition = 'none';
       progressBar.style.width = '0%';
       // force layout
@@ -284,14 +306,15 @@ function capturar() {
       // hide retry and disable capture while verifying
       if (retryCameraBtn) retryCameraBtn.style.display = 'none';
       if (typeof captureBtn !== 'undefined' && captureBtn) captureBtn.disabled = true;
+
       setTimeout(() => {
         // end of verifying
-        verifyingEl.hidden = true;
+        verifyingEl.style.display = 'none';
         progressBar.style.width = '0%';
         if (retryCameraBtn) retryCameraBtn.style.display = '';
         if (typeof captureBtn !== 'undefined' && captureBtn) captureBtn.disabled = false;
-        // show a big, prominent result overlay
-        showBigResult(tone, hex, avg);
+        // show a big, prominent result overlay using the frozen last frame
+        showBigResult(tone, hex, avg, lastFrameDataUrl);
         // accessibility toast as well
         showToast(tone, 1800);
       }, VERIFY_MS);
@@ -307,26 +330,20 @@ function capturar() {
 }
 
 // Display a full-screen big result overlay for a few seconds
-function showBigResult(text, hex, avg) {
+function showBigResult(text, hex, avg, frameDataUrl) {
   if (!bigResult) return;
-  bigResult.textContent = text + '\n' + (hex ? hex.toUpperCase() : '');
-  // color the overlay background slightly based on sampled color if provided
-  if (hex) {
-    try {
-      bigResult.style.background = 'rgba(0,0,0,0.45)';
-      // create a large swatch element inside
-      bigResult.style.display = 'flex';
-      bigResult.style.flexDirection = 'column';
-      bigResult.style.alignItems = 'center';
-      bigResult.style.justifyContent = 'center';
-      bigResult.innerHTML = `<div style="background:${hex};width:160px;height:160px;border-radius:12px;border:6px solid rgba(255,255,255,0.18);"></div><div style="margin-top:18px;font-size:44px;font-weight:800;text-align:center;">${text}</div>`;
-    } catch (e) {
-      bigResult.textContent = text;
-    }
-  } else {
-    bigResult.textContent = text;
-    bigResult.style.display = 'flex';
+  // Build a richer layout: frozen frame (if available), big swatch and label
+  let inner = '';
+  if (frameDataUrl) {
+    inner += `<img src="${frameDataUrl}" alt="captured frame" style="max-width:420px; width:86%; height:auto; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.4);">`;
   }
+  if (hex) {
+    inner += `<div style="margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:10px;"><div style="background:${hex};width:140px;height:140px;border-radius:12px;border:6px solid rgba(255,255,255,0.18);"></div><div style="font-size:44px;font-weight:800;text-align:center;">${text}</div><div style="font-size:18px;opacity:0.92;">${hex.toUpperCase()}</div></div>`;
+  } else {
+    inner += `<div style="margin-top:18px;font-size:44px;font-weight:800;text-align:center;">${text}</div>`;
+  }
+  bigResult.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">${inner}</div>`;
+  bigResult.style.display = 'flex';
   // hide after a few seconds
   setTimeout(() => { bigResult.style.display = 'none'; }, 3200);
 }
