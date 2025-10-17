@@ -285,11 +285,16 @@ function capturar() {
   if (luminanceHistory.length > LUMA_SMOOTH) luminanceHistory.shift();
   const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
 
-  // Tone decision: use explicit RGB thresholds as requested
-  // Adjusted thresholds so mid-tones (e.g. #74696C -> r=116,g=105,b=108) are not
-  // incorrectly classified as 'oscuro'. New rule:
-  // Consider 'oscuro' when average channels satisfy: r < 100 && g < 90 && b < 90
-  const isDarkByRGB = (avg.r < 100 && avg.g < 90 && avg.b < 90);
+  // Stricter face-oriented darkness rule:
+  // Combine average channel and smoothed luminance so that brown/grey/black skin tones
+  // are reliably classified as 'oscuro' while avoiding mid-tone false positives.
+  // - avgChannel: simple mean of R,G,B in 0..255
+  // - smoothLuma: smoothed relative luminance in 0..1
+  const avgChannel = (avg.r + avg.g + avg.b) / 3;
+  const darkByAvg = avgChannel < 95;       // fairly dark by channel average
+  const darkByLuma = smoothLuma < 0.38;    // quite dark by luminance
+  // For faces, require either very low luminance, or both low avg and moderately low luminance
+  const isDarkByRGB = darkByLuma || (darkByAvg && smoothLuma < 0.45);
   const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
   if (isDarkByRGB) {
     // play song for dark tone
