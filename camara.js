@@ -261,8 +261,10 @@ function capturar() {
   const smoothLuma = luminanceHistory.reduce((a,b) => a + b, 0) / luminanceHistory.length;
 
   // Tone decision: use explicit RGB thresholds as requested
-  // Consider 'oscuro' when average channels satisfy: r < 90 && g < 70 && b < 60
-  const isDarkByRGB = (avg.r < 90 && avg.g < 70 && avg.b < 60);
+  // Adjusted thresholds so mid-tones (e.g. #74696C -> r=116,g=105,b=108) are not
+  // incorrectly classified as 'oscuro'. New rule:
+  // Consider 'oscuro' when average channels satisfy: r < 100 && g < 90 && b < 90
+  const isDarkByRGB = (avg.r < 100 && avg.g < 90 && avg.b < 90);
   const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
 
     // Show verifying progress only after capture, animate for a longer period (8s) then show a large result
