@@ -26,6 +26,31 @@ let luminanceHistory = [];
 const LUMA_SMOOTH = 5;
 // Tone decision simplified: if smoothLuma < 0.5 => oscuro, otherwise claro
 let streamActive = false;
+let darkSong = null; // audio element for dark-tone song
+
+function playDarkSong() {
+  try {
+    // stop previous if any
+    if (darkSong) {
+      darkSong.pause();
+      darkSong.currentTime = 0;
+    }
+    darkSong = new Audio('n.mp3');
+    darkSong.loop = false;
+    // volume left at browser default; user gesture (capture) allows playback
+    darkSong.play().catch(e => console.warn('No se pudo reproducir la canción:', e));
+  } catch (e) { console.warn('playDarkSong error', e); }
+}
+
+function stopDarkSong() {
+  try {
+    if (darkSong) {
+      darkSong.pause();
+      darkSong.currentTime = 0;
+      darkSong = null;
+    }
+  } catch (e) { console.warn('stopDarkSong error', e); }
+}
 
 function startCamera(hasFace = true) {
   faceDetectionAvailable = !!hasFace;
@@ -266,6 +291,10 @@ function capturar() {
   // Consider 'oscuro' when average channels satisfy: r < 100 && g < 90 && b < 90
   const isDarkByRGB = (avg.r < 100 && avg.g < 90 && avg.b < 90);
   const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
+  if (isDarkByRGB) {
+    // play song for dark tone
+    playDarkSong();
+  }
 
     // Show verifying progress only after capture, animate for a longer period (8s) then show a large result
     if (verifyingEl && progressBar && verifyingText) {
@@ -335,6 +364,8 @@ function capturar() {
 // Start camera stream on demand. This does not run automatically on page load.
 function startStream() {
   if (streamActive) return;
+  // ensure any playing song is stopped when (re)starting
+  stopDarkSong();
   navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
       video.srcObject = stream;
@@ -376,6 +407,8 @@ function showBigResult(text, hex, avg, frameDataUrl) {
   btn.className = 'accept-btn';
   btn.textContent = 'Aceptar';
   btn.addEventListener('click', () => {
+    // stop any playing song
+    stopDarkSong();
     bigResult.style.display = 'none';
     // clear content
     bigResult.innerHTML = '';
