@@ -2,14 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Detector de Color Facial</title>
   <link rel="stylesheet" href="estilos.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>Detector de Color Promedio</h1>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-  <button onclick="capturar()">Capturar</button>
+  <div class="container">
+    <h1>Detector de Color</h1>
+    <div class="camera-container">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+    <button class="capture-btn" onclick="capturar()">
+      <span class="btn-text">Capturar</span>
+    </button>
+  </div>
   <script src="camara.js"></script>
 </body>
 </html>

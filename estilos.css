@@ -1,11 +1,90 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
-  font-family: sans-serif;
-  text-align: center;
-  background-color: #f0f0f0;
+  font-family: 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+  width: 100%;
+  max-width: 500px;
+}
+
+h1 {
+  color: #1a237e;
+  margin-bottom: 20px;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.camera-container {
+  position: relative;
+  width: 100%;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
 video {
-  width: 300px;
-  border: 2px solid #333;
-  margin-top: 20px;
+  width: 100%;
+  display: block;
+  background-color: #000;
+}
+
+.capture-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  width: 80%;
+  max-width: 250px;
+}
+
+.capture-btn:hover {
+  background: #43A047;
+  transform: translateY(-2px);
+}
+
+.capture-btn:active {
+  transform: translateY(1px);
+}
+
+.btn-text {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+/* Ajustes para dispositivos móviles más pequeños */
+@media (max-width: 360px) {
+  .container {
+    padding: 15px;
+  }
+  
+  h1 {
+    font-size: 20px;
+  }
+  
+  .capture-btn {
+    padding: 10px 25px;
+    font-size: 14px;
+  }
 }
