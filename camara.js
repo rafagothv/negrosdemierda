@@ -199,27 +199,14 @@ video.addEventListener('loadedmetadata', () => {
 // When using the npm build, faceDetectionModule is available globaly from the script.
 // Start the camera after the scripts are loaded and the page is visible.
 window.addEventListener('DOMContentLoaded', () => {
-  // Small delay to ensure video element is ready for Camera
-  let started = false;
-  function tryStartCamera() {
-    if (!started) {
-      started = true;
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      video.srcObject = stream;
       startCamera();
-      // fallback: if video not playing in 2s, use getUserMedia
-      setTimeout(() => {
-        if (!video.srcObject || video.readyState < 2) {
-          navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-              video.srcObject = stream;
-            })
-            .catch(err => {
-              showToast('No se pudo acceder a la cámara');
-              console.error('getUserMedia error:', err);
-            });
-        }
-      }, 2000);
-    }
-  }
-  tryStartCamera();
+    })
+    .catch(err => {
+      showToast('No se pudo acceder a la cámara');
+      console.error('getUserMedia error:', err);
+    });
 });
 
