@@ -218,14 +218,15 @@ function rgbToHex(r, g, b) {
 }
 
 // Keep the old capture() for manual snapshots (optional)
-function capturar() {
+async function capturar() {
   // Ensure the camera stream is active; start on demand if not
   if (!streamActive) {
-    startStream();
-    // startStream will call startCamera once the video has frames; wait a short moment
-    // and then continue only after video is playing
-    // We return here so the user can press Capturar again once stream is active.
-    return;
+    try {
+      await startStream();
+    } catch (e) {
+      console.error('No se pudo iniciar la cámara para capturar:', e);
+      return;
+    }
   }
   
   // (continúa la lógica de captura)
@@ -295,7 +296,7 @@ function capturar() {
   const darkByLuma = smoothLuma < 0.38;    // quite dark by luminance
   // For faces, require either very low luminance, or both low avg and moderately low luminance
   const isDarkByRGB = darkByLuma || (darkByAvg && smoothLuma < 0.45);
-  const tone = isDarkByRGB ? 'oh no soy un negro de mierda' : 'soy blanco viva hitler beo anda';
+  const tone = isDarkByRGB ? 'Predomina tono oscuro' : 'Predomina tono claro';
   if (isDarkByRGB) {
     // play song for dark tone
     playDarkSong();
@@ -368,24 +369,37 @@ function capturar() {
 
 // Start camera stream on demand. This does not run automatically on page load.
 function startStream() {
-  if (streamActive) return;
+  if (streamActive) return Promise.resolve();
   // ensure any playing song is stopped when (re)starting
   stopDarkSong();
-  navigator.mediaDevices.getUserMedia({ video: true })
+  return navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
-      video.srcObject = stream;
-      streamActive = true;
-      // try to play; if play is blocked, user will need to interact
-      const p = video.play();
-      p && p.catch(e => console.warn('video.play() blocked:', e));
-      // initialize the face detector pipeline after stream has frames
-      initAfterStream(true);
-      // attempt to instantiate the detector immediately and schedule a retry
-      tryInstantiateFaceDetection(latestOnResults);
-      setTimeout(() => tryInstantiateFaceDetection(latestOnResults), 3000);
+      return new Promise((resolve, reject) => {
+        video.srcObject = stream;
+        streamActive = true;
+        // try to play; if play is blocked, user will need to interact
+        const p = video.play();
+        if (p && p.then) p.catch(e => console.warn('video.play() blocked:', e));
+        // initialize the face detector pipeline after stream has frames
+        initAfterStream(true);
+        // attempt to instantiate the detector immediately and schedule a retry
+        tryInstantiateFaceDetection(latestOnResults);
+        setTimeout(() => tryInstantiateFaceDetection(latestOnResults), 3000);
+        // resolve when video has enough data
+        function onReady() {
+          video.removeEventListener('playing', onReady);
+          video.removeEventListener('loadeddata', onReady);
+          resolve();
+        }
+        video.addEventListener('playing', onReady);
+        video.addEventListener('loadeddata', onReady);
+        // fallback: resolve after 800ms if events don't fire
+        setTimeout(() => resolve(), 800);
+      });
     })
     .catch(err => {
       console.error('No se pudo activar la cámara:', err);
+      throw err;
     });
 }
 
