@@ -15,20 +15,16 @@
       <canvas id="overlay" class="overlay"></canvas>
       <canvas id="canvas" style="display:none;"></canvas>
     </div>
-    <button id="captureBtn" class="capture-btn" onclick="capturar()">
-      <span class="btn-text">Ver si soy negro</span>
+    <button id="captureBtn" class="capture-btn" onclick="Detectar()">
+      <span class="btn-text">ver si soy negro</span>
     </button>
-    <button id="startCameraBtn" class="capture-btn" style="margin-top:10px;">Activar cámara</button>
-    <button id="retryCameraBtn" class="capture-btn" style="display:none;margin-top:10px;" onclick="reintentarCamara()">Reintentar cámara</button>
-    <div class="info">
+  <!-- camera starts on Capturar button press -->
+  <div class="info">
       <div id="swatch" class="swatch"></div>
       <div id="colorHex" class="color-hex">--</div>
       <div id="cameraStatus" class="camera-status">Cámara: --</div>
     </div>
-    <div class="controls">
-      <label for="thresholdRange">Umbral luminancia: <span id="thresholdVal">0.25</span></label>
-      <input id="thresholdRange" type="range" min="0" max="1" step="0.01" value="0.25">
-    </div>
+    <!-- threshold control removed per request -->
     <div style="display:flex;justify-content:center;gap:8px;margin-top:8px;">
       <button id="retryDetectorBtn" class="capture-btn" style="display:inline-block;">Reintentar detección facial</button>
     </div>
@@ -38,14 +34,12 @@
         <div class="progress" aria-hidden="true">
           <div id="progressBar" class="progress-bar"></div>
         </div>
-        <div id="verifyingText" class="verifying-text">Verificando...</div>
+        <div id="verifyingText" class="verifying-text">Verificando negro...</div>
       </div>
     </div>
     <!-- Big result overlay (hidden until verification completes) -->
   <div id="bigResult" class="big-result" style="display:none;" aria-live="polite"></div>
-    <div id="resultToast" class="result-toast" aria-live="polite" hidden>
-      <div id="resultText" class="result-text"></div>
-    </div>
+    <!-- result toast removed as requested -->
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
